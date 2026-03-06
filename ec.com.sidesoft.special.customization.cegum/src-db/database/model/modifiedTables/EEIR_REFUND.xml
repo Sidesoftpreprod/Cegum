@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+  <database name="MODIFIED TABLE EEIR_REFUND">
+    <table name="EEIR_REFUND" primaryKey="EEIR_REFUND_KEY">
+      <column name="EM_SSCC_LIVELIHOODT_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <foreign-key foreignTable="SSWH_LIVELIHOODT" name="EM_SSCC_LIVELIHOODT_IDK">
+        <reference local="EM_SSCC_LIVELIHOODT_ID" foreign="SSWH_LIVELIHOODT_ID"/>
+      </foreign-key>
+    </table>
+  </database>
