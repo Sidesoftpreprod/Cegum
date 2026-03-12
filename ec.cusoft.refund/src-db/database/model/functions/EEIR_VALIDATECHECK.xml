@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION EEIR_VALIDATECHECK">
+    <function name="EEIR_VALIDATECHECK" type="NULL">
+      <parameter name="p_ep_instance" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[TYPE RECORD IS REF CURSOR;
+    Cur_Params RECORD;
+    rOrder RECORD;
+    cOrderLine RECORD;
+    
+    p_record_id VARCHAR(60);
+    p_docAction VARCHAR(60);
+    p_user VARCHAR(60);
+    v_ResultStr VARCHAR2(2000):='';
+    vDescription VARCHAR(255):='';
+	v_isRefund VARCHAR(1);
+	v_refund_count NUMBER;
+	v_grandTotal NUMBER;
+	v_refund_total NUMBER;
+ 
+BEGIN
+
+    FOR Cur_Params IN (
+        SELECT *
+        FROM ad_ep_instance_para
+        WHERE ad_ep_instance_id = p_ep_instance
+    ) LOOP
+        IF cur_params.parametername = 'DocAction' THEN
+            p_docaction := Cur_Params.p_string;
+        ELSIF (cur_params.parametername = 'Record_ID') THEN
+            p_record_id := cur_params.p_string;
+        ELSIF (cur_params.parametername = 'User') THEN
+            p_user := cur_params.p_string;
+        END IF;
+    END LOOP;
+
+		SELECT EM_Ssre_Isrefund, GrandTotal
+		INTO v_isRefund, v_grandTotal
+		FROM c_invoice WHERE c_invoice_id = p_record_id;
+
+		SELECT COALESCE(SUM(eeir_total), 0)
+	    INTO v_refund_total
+	    FROM eeir_refund
+	    WHERE c_invoice_id = p_record_id;
+
+            SELECT COUNT(*)
+            INTO v_refund_count 
+            FROM eeir_refund
+            WHERE c_invoice_id = p_record_id;
+
+	  IF p_docaction = 'CO' THEN
+        IF v_isRefund = 'Y' THEN
+
+            IF v_refund_count < 1 THEN
+                RAISE_APPLICATION_ERROR(VARCHAR2000, 'Deben existir registros en la solapa reembolso');
+            END IF;
+        END IF;
+    END IF;
+
+    EXCEPTION WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('eeir_validatecheck exception: '|| v_ResultStr);
+    RAISE;
+END EEIR_VALIDATECHECK
+]]></body>
+    </function>
+  </database>
