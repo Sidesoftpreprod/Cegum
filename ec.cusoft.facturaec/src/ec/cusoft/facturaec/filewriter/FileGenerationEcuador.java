@@ -517,75 +517,51 @@ public class FileGenerationEcuador extends AbstractFileGeneration
 
     // *****************************INICIO REEMBOLSOS
 
-    String strRefundCode = null, strRefundTotal = null, strRefundBaseImponible = null,
-        strRefundTotalImpuestos = null;
-    if (getRefundData(invoice, "0").equals("Y")) {
-      if (invoice.isSsreIsrefund()) {
-
-        invoice.getEEIRRefundList();
-    	
-        for (eeirRefund invoice_refund : invoice.getEEIRRefundList()) {
-          
-        Invoice purchase_invoice = OBDal.getInstance().get(Invoice.class,
-            invoice_refund.getEeirInvoice().getId());
-
-        strRefundCode = getRefundData(invoice, "1");
-        strRefundTotal = getRefundData(purchase_invoice, "2");
-        strRefundBaseImponible = getRefundData(purchase_invoice, "3");
-        strRefundTotalImpuestos = getRefundData(purchase_invoice, "4");
-
-        log4j.debug(strRefundCode + " - " + strRefundTotal + " - " + strRefundBaseImponible + " - "
-            + strRefundTotalImpuestos);
-
-        if (strRefundCode != null && strRefundTotal != null && strRefundBaseImponible != null
-            && strRefundTotalImpuestos != null) {
-
-          try {
-            Element codDocReembolso = doc.createElement("codDocReembolso");
-            codDocReembolso.appendChild(doc.createTextNode(strRefundCode));
-            infoFactura.appendChild(codDocReembolso);
-
-            Element totalComprobantesReembolso = doc.createElement("totalComprobantesReembolso");
-            totalComprobantesReembolso.appendChild(doc
-                .createTextNode(formateador.format(Double.parseDouble(strRefundTotal)).toString()));
-            infoFactura.appendChild(totalComprobantesReembolso);
-
-            Element totalBaseImponibleReembolso = doc.createElement("totalBaseImponibleReembolso");
-            totalBaseImponibleReembolso.appendChild(doc.createTextNode(
-                formateador.format(Double.parseDouble(strRefundBaseImponible)).toString()));
-            infoFactura.appendChild(totalBaseImponibleReembolso);
-
-            Element totalImpuestoReembolso = doc.createElement("totalImpuestoReembolso");
-            totalImpuestoReembolso.appendChild(doc.createTextNode(
-                formateador.format(Double.parseDouble(strRefundTotalImpuestos)).toString()));
-            infoFactura.appendChild(totalImpuestoReembolso);
-          } catch (Exception e) {
-
-            throw new OBException("Error al obtener información de reembolso. " + e.getMessage());
-          }
-
-        } else {
-          String strError = null;
-          if (strRefundCode == null || strRefundCode.trim().equals("")) {
-            throw new OBException("Código de Reembolso en tipo de documento no configurado.");
-          }
-          if (strRefundCode == null || strRefundCode.trim().equals("")) {
-            strError = "Total";
-          }
-          if (strRefundCode == null || strRefundCode.trim().equals("")) {
-            strError = "Base Imponible";
-          }
-          if (strRefundCode == null || strRefundCode.trim().equals("")) {
-            strError = "Total Impuestos";
-          }
-          throw new OBException("Error al obtener valor de " + strError
-              + " de la factura de compra referenciada (reembolso).");
-        }
-
-      } 
-      }else {
-        throw new OBException("No hay una factura de compra referenciada válida (reembolso). ");
+    if (invoice.isSsreIsrefund()) {
+      if (invoice.getEeirLivelihoodt() == null) {
+        throw new OBException("se debe elegir el tipo de comprobante para el reembolso");
       }
+
+      String strRefundCode = invoice.getEeirLivelihoodt().getSearchKey();
+      if (strRefundCode == null || strRefundCode.trim().equals("")) {
+        throw new OBException("se debe elegir el tipo de comprobante para el reembolso");
+      }
+
+      double totalComprobantesReembolso = 0;
+      double totalBaseImponibleReembolso = 0;
+      double totalImpuestoReembolso = 0;
+
+      invoice.getEEIRRefundList();
+      for (eeirRefund invoice_refund : invoice.getEEIRRefundList()) {
+        if (invoice_refund.getEeirTotal() != null) {
+          totalComprobantesReembolso += invoice_refund.getEeirTotal().doubleValue();
+        }
+        if (invoice_refund.getEeirBase() != null) {
+          totalBaseImponibleReembolso += invoice_refund.getEeirBase().doubleValue();
+        }
+        if (invoice_refund.getEeirTax() != null) {
+          totalImpuestoReembolso += invoice_refund.getEeirTax().doubleValue();
+        }
+      }
+
+      Element codDocReembolso = doc.createElement("codDocReembolso");
+      codDocReembolso.appendChild(doc.createTextNode(strRefundCode));
+      infoFactura.appendChild(codDocReembolso);
+
+      Element totalComprobantesReembolsoElement = doc.createElement("totalComprobantesReembolso");
+      totalComprobantesReembolsoElement.appendChild(doc
+          .createTextNode(formateador.format(totalComprobantesReembolso).toString()));
+      infoFactura.appendChild(totalComprobantesReembolsoElement);
+
+      Element totalBaseImponibleReembolsoElement = doc.createElement("totalBaseImponibleReembolso");
+      totalBaseImponibleReembolsoElement.appendChild(doc
+          .createTextNode(formateador.format(totalBaseImponibleReembolso).toString()));
+      infoFactura.appendChild(totalBaseImponibleReembolsoElement);
+
+      Element totalImpuestoReembolsoElement = doc.createElement("totalImpuestoReembolso");
+      totalImpuestoReembolsoElement.appendChild(doc
+          .createTextNode(formateador.format(totalImpuestoReembolso).toString()));
+      infoFactura.appendChild(totalImpuestoReembolsoElement);
     }
     // *****************************FIN REEMBOLSOS
 
@@ -1532,11 +1508,9 @@ public class FileGenerationEcuador extends AbstractFileGeneration
       reembolsoDetalle.appendChild(tipoProveedorReembolso);
 
       // CÓDIGO DOCUMENTO REEMBOLSO
-      //String strCodDocReembolso = purchase_invoice.getSswhLivelihood().getSearchKey();
-      String strCodDocReembolso = invoice_refund.getSsccLivelihoodt().getSearchKey();
+      String strCodDocReembolso = invoice.getEeirLivelihoodt().getSearchKey();
       if (strCodDocReembolso == null || strCodDocReembolso.equals("")) {
-        throw new OBException(
-            "Identificador del tipo de comprobante en datos de retención de la factura de compra referenciada (reembolso) no configurado.");
+        throw new OBException("se debe elegir el tipo de comprobante para el reembolso");
       }
       Element codDocReembolso = doc.createElement("codDocReembolso");
       codDocReembolso.appendChild(doc.createTextNode(strCodDocReembolso));

@@ -15,6 +15,7 @@
     v_ResultStr VARCHAR2(2000):='';
     vDescription VARCHAR(255):='';
 	v_isRefund VARCHAR(1);
+	v_livelihoodId VARCHAR(32);
 	v_refund_count NUMBER;
 	v_grandTotal NUMBER;
 	v_refund_total NUMBER;
@@ -35,8 +36,8 @@ BEGIN
         END IF;
     END LOOP;
 
-		SELECT EM_Ssre_Isrefund, GrandTotal
-		INTO v_isRefund, v_grandTotal
+		SELECT EM_Ssre_Isrefund, GrandTotal, EM_Eeir_Livelihoodt_ID
+		INTO v_isRefund, v_grandTotal, v_livelihoodId
 		FROM c_invoice WHERE c_invoice_id = p_record_id;
 
 		SELECT COALESCE(SUM(eeir_total), 0)
@@ -51,6 +52,10 @@ BEGIN
 
 	  IF p_docaction = 'CO' THEN
         IF v_isRefund = 'Y' THEN
+
+            IF v_livelihoodId IS NULL THEN
+                RAISE_APPLICATION_ERROR(VARCHAR2000, 'Debe indicar el Tipo de sustento para facturas de reembolso');
+            END IF;
 
             IF v_refund_count < 1 THEN
                 RAISE_APPLICATION_ERROR(VARCHAR2000, 'Deben existir registros en la solapa reembolso');
